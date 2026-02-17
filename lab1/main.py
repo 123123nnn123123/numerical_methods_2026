@@ -146,3 +146,27 @@ energy = mass * g * total_ascent
 print("Механічна робота (Дж):", energy)
 print("Механічна робота (кДж):", energy/1000)
 print("Енергія (ккал):", energy/4184)
+
+# -------------------------------
+# 8. Аналіз градієнта маршруту
+# -------------------------------
+
+# Похідна сплайна (градієнт у %)
+grad_full = np.gradient(yy, xx) * 100
+
+print("\n--- Аналіз градієнта маршруту ---")
+print("Максимальний підйом (%):", np.max(grad_full))
+print("Максимальний спуск (%):", np.min(grad_full))
+print("Середній градієнт (%):", np.mean(np.abs(grad_full)))
+
+# Ділянки з крутизною > 15%
+steep_sections = np.where(np.abs(grad_full) > 15)[0]
+
+print("\nКількість ділянок з крутизною > 15%:", len(steep_sections))
+
+if len(steep_sections) > 0:
+    print("Перші кілька таких ділянок (у метрах від старту):")
+    for i in steep_sections[:10]:
+        print(f"Відстань ≈ {xx[i]:.1f} м, градієнт ≈ {grad_full[i]:.2f}%")
+else:
+    print("Ділянок з крутизною > 15% не знайдено.")
