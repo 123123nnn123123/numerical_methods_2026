@@ -1,129 +1,76 @@
+import csv
 import numpy as np
 import matplotlib.pyplot as plt
-import csv
 
-# ----------------------------------
-# ЗАДАНА ФУНКЦІЯ (можна змінити)
-# ----------------------------------
-def f(x):
-    return 1 / (1 + 25 * x**2)   # зручно для демонстрації ефекту Рунге
+def read_data(filename):
+    x, y = [], []
+    with open(filename, 'r', newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            x.append(float(row['tasks']))
+            y.append(float(row['cost']))
+    return np.array(x), np.array(y)
 
-
-# ----------------------------------
-# Табуляція та запис у файл
-# ----------------------------------
-def tabulate_function(a, b, n, filename):
-    x = np.linspace(a, b, n)
-    y = f(x)
-
-    with open(filename, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(["x", "y"])
-        for xi, yi in zip(x, y):
-            writer.writerow([xi, yi])
-
-    return x, y
-
-
-# ----------------------------------
-# Розділені різниці
-# ----------------------------------
 def divided_differences(x, y):
     n = len(y)
-    table = np.zeros((n, n))
-    table[:, 0] = y
-
+    coef = np.zeros([n, n])
+    coef[:, 0] = y
     for j in range(1, n):
         for i in range(n - j):
-            table[i][j] = (table[i + 1][j - 1] - table[i][j - 1]) / (x[i + j] - x[i])
+            coef[i][j] = (coef[i+1][j-1] - coef[i][j-1]) / (x[i+j] - x[i])
+    return coef
 
-    return table
-
-
-# ----------------------------------
-# Поліном Ньютона
-# ----------------------------------
-def newton_polynomial(x, table, value):
-    n = len(x)
-    result = table[0, 0]
+def newton_poly(coef_matrix, x_nodes, x_val):
+    n = len(x_nodes)
+    res = coef_matrix[0, 0]
     product = 1.0
-
     for i in range(1, n):
-        product *= (value - x[i - 1])
-        result += table[0, i] * product
+        product *= (x_val - x_nodes[i-1])
+        res += coef_matrix[0, i] * product
+    return res
 
-    return result
+# --- ПІДГОТОВКА ДАНИХ ---
+x_nodes, y_nodes = read_data("data.csv")
+table_full = divided_differences(x_nodes, y_nodes)
+
+# Для дослідження (стор. 14): беремо обмежену кількість вузлів
+x_small = x_nodes[1:-1] # Наприклад, 3 вузли для порівняння
+table_small = divided_differences(x_small, y_nodes[1:-1])
+
+x_plot = np.linspace(min(x_nodes), max(x_nodes), 500)
+y_full = [newton_poly(table_full, x_nodes, x) for x in x_plot]
+y_small = [newton_poly(table_small, x_small, x) for x in x_plot]
+y_omega = [abs(np.prod([x - xi for xi in x_nodes])) for x in x_plot]
+y_error = [abs(y_f - y_s) for y_f, y_s in zip(y_full, y_small)]
+
+# --- ВІЗУАЛІЗАЦІЯ (4 ГРАФІКИ) ---
+fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+
+# 1. Основна інтерполяція [cite: 161, 208]
+axs[0, 0].plot(x_plot, y_full, 'b', label='N_n(x) повна')
+axs[0, 0].scatter(x_nodes, y_nodes, color='red')
+axs[0, 0].set_title("1. Інтерполяція (всі вузли)")
+axs[0, 0].grid(True)
+
+# 2. Допоміжний поліном w_n(x) [cite: 160]
+axs[0, 1].plot(x_plot, y_omega, 'g', label='|w_n(x)|')
+axs[0, 1].set_title("2. Поведінка |w_n(x)|")
+axs[0, 1].grid(True)
+
+# 3. Дослідження кількості вузлів (Ефект Рунге) [cite: 245, 247]
+axs[1, 0].plot(x_plot, y_full, 'b', label='5 вузлів')
+axs[1, 0].plot(x_plot, y_small, 'r--', label='3 вузли')
+axs[1, 0].set_title("3. Вплив кількості вузлів")
+axs[1, 0].legend()
+axs[1, 0].grid(True)
+
+# 4. Графік похибки epsilon(x) [cite: 160, 246]
+axs[1, 1].fill_between(x_plot, y_error, color='orange', alpha=0.3)
+axs[1, 1].plot(x_plot, y_error, color='orange')
+axs[1, 1].set_title("4. Графік похибки ε(x)")
+axs[1, 1].grid(True)
 
 
-# ----------------------------------
-# Дослідження для різної кількості вузлів
-# ----------------------------------
-def research(a, b, node_counts):
-    x_dense = np.linspace(a, b, 1000)
-    y_true = f(x_dense)
 
-    plt.figure()
-    plt.plot(x_dense, y_true)
-    plt.title("Ефект Рунге та вплив кількості вузлів")
-    plt.grid(True)
-
-    for n in node_counts:
-        x_nodes = np.linspace(a, b, n)
-        y_nodes = f(x_nodes)
-
-        table = divided_differences(x_nodes, y_nodes)
-
-        y_interp = [newton_polynomial(x_nodes, table, xi) for xi in x_dense]
-
-        error = np.max(np.abs(y_true - y_interp))
-        print(f"Максимальна похибка при {n} вузлах: {error}")
-
-        plt.plot(x_dense, y_interp, label=f"n = {n}")
-
-    plt.legend()
-    plt.show()
-
-
-# ----------------------------------
-# ОСНОВНА ПРОГРАМА
-# ----------------------------------
-if __name__ == "__main__":
-
-    a = -1
-    b = 1
-
-    # Табуляція (5 вузлів як базовий приклад)
-    x, y = tabulate_function(a, b, 5, "data.csv")
-
-    # Побудова таблиці різниць
-    table = divided_differences(x, y)
-
-    print("Таблиця розділених різниць:")
-    print(table)
-
-    # Обчислення значення в конкретній точці
-    x_value = 0.3
-    y_value = newton_polynomial(x, table, x_value)
-
-    print(f"\nЗначення полінома в точці {x_value} = {y_value}")
-    print(f"Точне значення = {f(x_value)}")
-    print(f"Похибка = {abs(f(x_value) - y_value)}")
-
-    # Графік для базового випадку
-    x_dense = np.linspace(a, b, 1000)
-    y_true = f(x_dense)
-    y_interp = [newton_polynomial(x, table, xi) for xi in x_dense]
-
-    plt.figure()
-    plt.plot(x_dense, y_true)
-    plt.plot(x_dense, y_interp)
-    plt.scatter(x, y)
-    plt.title("Інтерполяція Ньютона")
-    plt.grid(True)
-    plt.show()
-
-    # -------------------------------
-    # ДОСЛІДНИЦЬКА ЧАСТИНА
-    # -------------------------------
-    print("\nДОСЛІДЖЕННЯ:")
-    research(a, b, [5, 10, 20])
+plt.tight_layout()
+plt.show()
