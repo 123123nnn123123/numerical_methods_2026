@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
-
 # -----------------------------
 # зчитування даних з CSV
 # -----------------------------
@@ -25,11 +24,9 @@ def read_csv(filename):
 # -----------------------------
 def form_matrix(x, m):
     A = np.zeros((m + 1, m + 1))
-
     for i in range(m + 1):
         for j in range(m + 1):
             A[i][j] = np.sum(x ** (i + j))
-
     return A
 
 
@@ -38,10 +35,8 @@ def form_matrix(x, m):
 # -----------------------------
 def form_vector(x, y, m):
     b = np.zeros(m + 1)
-
     for i in range(m + 1):
         b[i] = np.sum(y * (x ** i))
-
     return b
 
 
@@ -50,23 +45,17 @@ def form_vector(x, y, m):
 # -----------------------------
 def gauss(A, b):
     n = len(b)
-
     for k in range(n):
-
         max_row = np.argmax(abs(A[k:, k])) + k
         A[[k, max_row]] = A[[max_row, k]]
         b[[k, max_row]] = b[[max_row, k]]
-
         for i in range(k + 1, n):
             factor = A[i][k] / A[k][k]
             A[i, k:] -= factor * A[k, k:]
             b[i] -= factor * b[k]
-
     x = np.zeros(n)
-
     for i in range(n - 1, -1, -1):
         x[i] = (b[i] - np.sum(A[i, i + 1:] * x[i + 1:])) / A[i, i]
-
     return x
 
 
@@ -75,10 +64,8 @@ def gauss(A, b):
 # -----------------------------
 def polynomial(x, coef):
     y = np.zeros_like(x, dtype=float)
-
     for i, c in enumerate(coef):
         y += c * (x ** i)
-
     return y
 
 
@@ -94,7 +81,7 @@ def variance(y1, y2):
 # -----------------------------
 x, y = read_csv("data.csv")
 
-max_degree = 4
+max_degree = 10  # змінили діапазон
 variances = []
 
 for m in range(1, max_degree + 1):
@@ -102,22 +89,18 @@ for m in range(1, max_degree + 1):
     b = form_vector(x, y, m)
 
     coef = gauss(A.copy(), b.copy())
-
     y_ap = polynomial(x, coef)
-
     var = variance(y, y_ap)
-
     variances.append(var)
 
 optimal_m = np.argmin(variances) + 1
 
 print("Оптимальний степінь:", optimal_m)
 
+# розрахунок апроксимації для оптимального m
 A = form_matrix(x, optimal_m)
 b = form_vector(x, y, optimal_m)
-
 coef = gauss(A, b)
-
 y_ap = polynomial(x, coef)
 
 # -----------------------------
@@ -125,7 +108,6 @@ y_ap = polynomial(x, coef)
 # -----------------------------
 x_future = np.array([25, 26, 27])
 y_future = polynomial(x_future, coef)
-
 print("Прогноз температур:", y_future)
 
 # -----------------------------
@@ -137,45 +119,33 @@ error = y - y_ap
 # графік 1
 # -----------------------------
 plt.figure()
-
 plt.scatter(x, y, label="Дані")
-plt.plot(x, y_ap, label="Апроксимація")
-
+plt.plot(x, y_ap, label=f"Апроксимація (m={optimal_m})")
 plt.xlabel("Місяць")
 plt.ylabel("Температура")
 plt.title("Апроксимація температур")
-
 plt.legend()
 plt.grid()
-
 plt.show()
 
 # -----------------------------
 # графік 2
 # -----------------------------
 plt.figure()
-
 plt.plot(range(1, max_degree + 1), variances, marker='o')
-
 plt.xlabel("Степінь полінома")
 plt.ylabel("Дисперсія")
-plt.title("Залежність дисперсії")
-
+plt.title("Залежність дисперсії від степеня полінома")
 plt.grid()
-
 plt.show()
 
 # -----------------------------
 # графік 3
 # -----------------------------
 plt.figure()
-
 plt.plot(x, error, marker='o')
-
 plt.xlabel("Місяць")
 plt.ylabel("Похибка")
 plt.title("Похибка апроксимації")
-
 plt.grid()
-
 plt.show()
